@@ -1,9 +1,14 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>YouTube Downloader</title>
+    <meta charset="UTF-8">
+    <title>YouTube Video Downloader</title>
 </head>
 <body>
-    <h1>Welcome to YouTube Downloader</h1>
+    <h1>Download YouTube Video</h1>
+    <form action="/download" method="post">
+        <input type="text" name="url" placeholder="Enter YouTube URL" required>
+        <button type="submit">Download</button>
+    </form>
 </body>
 </html>
