@@ -13,6 +13,7 @@ app = Flask(__name__)
 CORS(app)
 
 DOWNLOAD_FOLDER = 'static/downloads'
+COOKIES_FILE = 'cookies.txt'  # 🔑 Cookies support added
 os.makedirs(DOWNLOAD_FOLDER, exist_ok=True)
 
 @app.route('/', methods=['GET'])
@@ -52,41 +53,39 @@ def api_download():
 
     # A list of option-sets to try (primary -> fallbacks)
     opts_list = [
-        # Primary: download best video+audio, merge if necessary
         {
             "outtmpl": out_template,
             "format": "bestvideo+bestaudio/best",
             "noplaylist": True,
             "http_headers": headers,
             "geo_bypass": True,
+            "cookiefile": COOKIES_FILE,   # 🔑 Added
             "socket_timeout": 30,
             "no_warnings": True,
             "quiet": True,
         },
-        # Fallback 1: simple best single-file
         {
             "outtmpl": out_template,
             "format": "best",
             "noplaylist": True,
             "http_headers": headers,
             "geo_bypass": True,
+            "cookiefile": COOKIES_FILE,   # 🔑 Added
             "socket_timeout": 30,
             "no_warnings": True,
             "quiet": True,
         },
-        # Fallback 2: try only audio stream (sometimes works when video blocked)
         {
             "outtmpl": out_template,
             "format": "bestaudio/best",
             "noplaylist": True,
             "http_headers": headers,
             "geo_bypass": True,
+            "cookiefile": COOKIES_FILE,   # 🔑 Added
             "socket_timeout": 30,
             "no_warnings": True,
             "quiet": True,
-            # do not force postprocessing (avoid requiring ffmpeg)
         },
-        # Fallback 3: force generic extractor (last resort)
         {
             "outtmpl": out_template,
             "format": "best",
@@ -94,6 +93,7 @@ def api_download():
             "force_generic_extractor": True,
             "http_headers": headers,
             "geo_bypass": True,
+            "cookiefile": COOKIES_FILE,   # 🔑 Added
             "socket_timeout": 30,
             "no_warnings": True,
             "quiet": True,
@@ -105,11 +105,9 @@ def api_download():
         try:
             logger.info("Attempt %d: trying download with options: %s", idx, {k: v for k, v in opts.items() if k != "http_headers"})
             filename = try_download_with_opts(url, opts)
-            # ensure file exists
             if not os.path.isfile(filename):
                 raise Exception("Download completed but file not found: " + str(filename))
 
-            # create external URL for the static file
             file_basename = os.path.basename(filename)
             download_url = url_for('static', filename=f"downloads/{file_basename}", _external=True)
             return jsonify({"status": "success", "download_url": download_url}), 200
@@ -117,20 +115,16 @@ def api_download():
         except Exception as e:
             logger.warning("Attempt %d failed: %s", idx, str(e))
             last_error = str(e)
-            # continue to next fallback
 
-    # All attempts failed
     return jsonify({"status": "error", "message": "All download attempts failed", "details": last_error}), 500
 
 
-# Keep the old web form route (optional)
 @app.route('/download', methods=['POST'])
 def download_form():
     url = request.form.get('url')
     if not url:
         return "Error: URL is required", 400
 
-    # For form route, reuse the API logic via internal request simulation
     response = app.test_client().post('/api/download', json={"url": url})
     return response.get_data(as_text=True), response.status_code, {'Content-Type': 'application/json'}
 
